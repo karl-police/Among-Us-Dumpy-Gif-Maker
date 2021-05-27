@@ -166,7 +166,7 @@ public class sus extends Application {
     	
     	// Set file extension filters
     	fileChooser.getExtensionFilters().addAll(
-    		new FileChooser.ExtensionFilter("Image files", "*.jpeg", "*.jpg", "*.bmp", "*.tiff", "*.tif", "*.png")
+    		new FileChooser.ExtensionFilter("Image file", "*.jpeg", "*.jpg", "*.bmp", "*.tiff", "*.tif", "*.png")
     	);
     	
     	File selectedFile = fileChooser.showOpenDialog(null);
