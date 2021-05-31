@@ -1,18 +1,22 @@
+import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
+import java.io.BufferedReader;
 import java.io.File;
-import java.util.Arrays;
+import java.io.IOException;
+import java.io.InputStreamReader;
 
 import javax.imageio.ImageIO;
 import javax.swing.JOptionPane;
+import javax.swing.filechooser.FileFilter;
+
 import javafx.application.Application;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Scene;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-
-import javax.swing.filechooser.FileFilter;
-import java.awt.Color;
 
 public class sus extends Application {
 
@@ -30,27 +34,24 @@ public class sus extends Application {
     // Hex color array
     public static String[] HEXES;
     
+    
+    
+    public static String dotSlash = "./";
+    
+    public static String input = "";
+    public static String extraoutput = "";
+    
+    public static int ty = 9; // width value
+    
     // MAIN
     public static void main(String[] args) throws Exception {
-    	Application.launch(args);
-    }
-    
-    @Override
-    public void start(Stage primaryStage) throws Exception {
-    	// Pass args to here
-    	String[] args = Arrays.copyOf(getParameters().getRaw().toArray(), getParameters().getRaw().toArray().length, String[].class);
-
-        String dotSlash = "./";
+    	
         boolean windows = isWindows();
         if (windows) {
             dotSlash = ".\\";
         }
-
-        String input = "";
-        String extraoutput = "";
+        
         boolean needFile = true;
-
-        int ty = 9; // width value
 
         if (args.length > 0) {
             if (args[0] != null) {
@@ -71,9 +72,14 @@ public class sus extends Application {
         }
 
         if (needFile) {
-            input = pickFile();
+        	Application.launch(args);
         }
+        
+        makeImage();
+    }
 
+        
+    public static void makeImage() throws Exception {
         // Sets up color palette
         SetupColors();
 
@@ -157,16 +163,42 @@ public class sus extends Application {
         }
         System.out.println("Done.");
     }
-
+    
+    
+    
+    @Override
+    public void start(Stage primaryStage) throws Exception {
+    	input = pickFile();
+    	
+	    // Open Progress Window
+	    FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("ProgressWindow.fxml"));
+	    Stage ProgressWindow = new Stage();
+	    ProgressWindow.setTitle("Console Log");
+	    
+	    ProgressWindow.setScene(new Scene(fxmlLoader.load()));
+	    ProgressWindow.show();
+	    
+	    // Run in another thread
+	    new Thread(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					makeImage();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		}).start();
+    }
+    
     
     // Picks file
     public static String pickFile() throws Exception {
     	FileChooser fileChooser = new FileChooser();
-    	//fileChooser.setTitle("Title");
     	
     	// Set file extension filters
     	fileChooser.getExtensionFilters().addAll(
-    		new FileChooser.ExtensionFilter("Image files", "*.jpeg", "*.jpg", "*.bmp", "*.tiff", "*.tif", "*.png")
+    		new FileChooser.ExtensionFilter("Image file", "*.jpeg", "*.jpg", "*.bmp", "*.tiff", "*.tif", "*.png")
     	);
     	
     	File selectedFile = fileChooser.showOpenDialog(null);
@@ -274,13 +306,39 @@ public class sus extends Application {
         boolean win = isWindows();
         if (win) {
             // execute windows command
-            new ProcessBuilder("cmd", "/c", cmd).inheritIO().start().waitFor();
+            Process process = new ProcessBuilder("cmd", "/c", cmd).start();
+            new Thread(new RuntimeReader(new BufferedReader(new InputStreamReader(process.getInputStream())))).start();
+            new Thread(new RuntimeReader(new BufferedReader(new InputStreamReader(process.getErrorStream())))).start();
+            process.waitFor();
         } else {
             // execute *nix command
-            new ProcessBuilder("sh", "-c", cmd).inheritIO().start().waitFor();
+        	Process process = new ProcessBuilder("sh", "-c", cmd).start();
+            new Thread(new RuntimeReader(new BufferedReader(new InputStreamReader(process.getInputStream())))).start();
+            new Thread(new RuntimeReader(new BufferedReader(new InputStreamReader(process.getErrorStream())))).start();
+        	process.waitFor();
         }
     }
 }
+
+class RuntimeReader implements Runnable {
+	private final BufferedReader bufferedReader;
+
+	public RuntimeReader(BufferedReader bufferedReader) {
+		this.bufferedReader = bufferedReader;
+	}
+	@Override
+	public void run() {
+		String line;
+        try {
+            while ((line = bufferedReader.readLine()) != null) {
+                System.out.println(line);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+	}
+}
+
 
 // This is an example of Floyd-Steinberg dithering lifted from
 // https://gist.github.com/naikrovek/643a9799171d20820cb9.
